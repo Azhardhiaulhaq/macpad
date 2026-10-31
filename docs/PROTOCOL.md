@@ -7,9 +7,11 @@ One TCP connection carries everything: video from the Mac to the tablet, input a
 | Transport | Mac listens on | Tablet connects to | Encryption |
 |---|---|---|---|
 | USB | `127.0.0.1:47800` (loopback only) | `127.0.0.1:47800`, forwarded by `adb reverse tcp:47800 tcp:47800` | none |
-| Wi-Fi | port `47801`, all interfaces, Bonjour `_macpad._tcp` | address from Android NSD | AES-256-GCM after the handshake |
+| Wi-Fi | port `47801`, all interfaces, Bonjour `_macpad._tcp` | address from Android NSD, a remembered address, or one the user typed | AES-256-GCM after the handshake |
 
 Bonjour TXT record: `id=<32 lowercase hex chars, server id>`, `v=1`. The service instance name is the Mac's computer name.
+
+Some routers drop multicast between wireless clients, so Bonjour never reaches the tablet. The tablet therefore also remembers the addresses from `SERVER_INFO` (learned over any connection, including USB) and tries them directly on port 47801, and lets the user type an address. For an address whose server id the tablet does not know yet, it sends `hasKey=0`.
 
 The Mac serves one tablet at a time. A second connection receives `NOTICE` code 2 and is closed.
 
@@ -79,7 +81,7 @@ SCROLL fields:
 
 | Type | Name | Payload |
 |---|---|---|
-| `0x80` | SERVER_INFO | `string macName` |
+| `0x80` | SERVER_INFO | `string macName`, `16B serverId`, `u8 count`, then `count` × `string address` (the Mac's IPv4 addresses on its active non-loopback interfaces, dotted form) |
 | `0x81` | VIDEO_CONFIG | `u16 width`, `u16 height`, then H.264 SPS and PPS in Annex B form (`00 00 00 01` start codes) |
 | `0x82` | VIDEO_FRAME | `u64 ptsMicros`, `u8 flags` (bit 0 keyframe), then H.264 access unit in Annex B form |
 | `0x83` | PONG | `u64 clientTimeNanos`, echoed |
