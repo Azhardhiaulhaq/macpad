@@ -15,6 +15,11 @@ final class UsbWatcher {
     private var process: Process?
     private var buffer = Data()
     private var attached = Set<String>()
+    /// Serials with a setUp in flight or a retry scheduled; the token invalidates stale callbacks.
+    private var pending = [String: UUID]()
+    private let workQueue = DispatchQueue(label: "macpad.usb.adb", attributes: .concurrent)
+    private static let maxAttempts = 5
+    private static let adbTimeout: TimeInterval = 5
 
     func start() {
         queue.async { self.launch() }
@@ -51,6 +56,7 @@ final class UsbWatcher {
             // adb server restarted or was killed: start over, which re-applies `adb reverse`.
             self?.queue.asyncAfter(deadline: .now() + 3) {
                 self?.attached.removeAll()
+                self?.pending.removeAll()
                 self?.buffer.removeAll()
                 self?.launch()
             }
@@ -85,23 +91,57 @@ final class UsbWatcher {
             let fields = line.split(separator: "\t")
             if fields.count == 2, fields[1] == "device" { online.insert(String(fields[0])) }
         }
-        for serial in online.subtracting(attached) { setUp(serial) }
-        attached = online
+        attached.formIntersection(online)
+        // Dropping the token cancels any queued retry for a device that went offline.
+        for serial in pending.keys where !online.contains(serial) { pending[serial] = nil }
+        for serial in online where !attached.contains(serial) && pending[serial] == nil {
+            attemptSetUp(serial, attempt: 1)
+        }
     }
 
-    private func setUp(_ serial: String) {
+    /// Runs setUp off the track-devices queue (adb calls can take seconds). A serial only joins
+    /// `attached` once setUp succeeds; failures retry every 2 s, up to `maxAttempts` per attach.
+    private func attemptSetUp(_ serial: String, attempt: Int) {
+        let token = pending[serial] ?? UUID()
+        pending[serial] = token
+        workQueue.async { [weak self] in
+            guard let self else { return }
+            let ok = self.setUp(serial)
+            self.queue.async {
+                guard self.pending[serial] == token else { return }
+                if ok {
+                    self.pending[serial] = nil
+                    self.attached.insert(serial)
+                } else if attempt < Self.maxAttempts {
+                    self.queue.asyncAfter(deadline: .now() + 2) {
+                        guard self.pending[serial] == token else { return }
+                        self.attemptSetUp(serial, attempt: attempt + 1)
+                    }
+                } else {
+                    self.pending[serial] = nil
+                    self.log.error("giving up on \(serial, privacy: .public) after \(attempt) attempts")
+                }
+            }
+        }
+    }
+
+    /// Success means `adb reverse` worked; a failed app launch is logged but not fatal, since the
+    /// reverse alone lets the tablet connect once the user opens MacPad.
+    private func setUp(_ serial: String) -> Bool {
         let port = "tcp:\(Ports.usb)"
-        guard run(["-s", serial, "reverse", port, port]) == 0 else {
-            log.error("adb reverse failed for \(serial)")
-            return
+        let reverse = run(["-s", serial, "reverse", port, port])
+        guard reverse == 0 else {
+            log.error("adb reverse failed for \(serial, privacy: .public): status \(reverse)")
+            return false
         }
         let status = run(["-s", serial, "shell", "am", "start",
                           "-a", "\(Self.androidPackage).CONNECT_USB",
                           "-n", "\(Self.androidPackage)/.MainActivity"])
-        log.info("tablet \(serial) attached; launch status \(status)")
+        log.info("tablet \(serial, privacy: .public) attached; launch status \(status)")
+        return true
     }
 
-    @discardableResult
+    /// Returns the exit status, or -1 on launch failure or timeout (the process is terminated).
     private func run(_ arguments: [String]) -> Int32 {
         guard let adbPath else { return -1 }
         let process = Process()
@@ -109,12 +149,20 @@ final class UsbWatcher {
         process.arguments = arguments
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
         do {
             try process.run()
-            process.waitUntilExit()
-            return process.terminationStatus
         } catch {
+            log.error("adb \(arguments.joined(separator: " "), privacy: .public) failed to start: \(error.localizedDescription, privacy: .public)")
             return -1
         }
+        if exited.wait(timeout: .now() + Self.adbTimeout) == .timedOut {
+            process.terminate()
+            if exited.wait(timeout: .now() + 1) == .timedOut { kill(process.processIdentifier, SIGKILL) }
+            log.error("adb \(arguments.joined(separator: " "), privacy: .public) timed out")
+            return -1
+        }
+        return process.terminationStatus
     }
 }

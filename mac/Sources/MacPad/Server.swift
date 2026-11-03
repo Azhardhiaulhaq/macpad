@@ -38,7 +38,7 @@ final class Server {
         }
         listener.stateUpdateHandler = { [weak self] state in
             if case .failed(let error) = state {
-                self?.log.error("listener \(port) failed: \(String(describing: error))")
+                self?.log.error("listener \(port) failed: \(String(describing: error), privacy: .public)")
                 self?.onError("Port \(port) is unavailable (\(error.localizedDescription)). Quit other copies of MacPad and reopen it.")
             }
         }

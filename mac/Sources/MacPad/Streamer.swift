@@ -83,7 +83,7 @@ final class Streamer: NSObject, SCStreamOutput, SCStreamDelegate {
             }
             log.info("streaming display \(self.displayID) at \(self.width)x\(self.height)")
         } catch {
-            log.error("start failed: \(String(describing: error))")
+            log.error("start failed: \(String(describing: error), privacy: .public)")
             output.failed(error.localizedDescription)
         }
     }
@@ -265,7 +265,7 @@ final class Streamer: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     func stream(_ stream: SCStream, didStopWithError error: Error) {
-        log.error("capture stopped: \(String(describing: error))")
+        log.error("capture stopped: \(String(describing: error), privacy: .public)")
         output.failed(error.localizedDescription)
     }
 

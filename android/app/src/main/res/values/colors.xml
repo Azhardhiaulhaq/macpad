@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pair_code">@android:color/system_accent1_600</color>
+    <!-- The system hint grey is 3.2:1 on the light background; this keeps the hint at 5:1 (AA). -->
+    <color name="hint">#6B6B70</color>
+</resources>

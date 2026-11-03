@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:id="@+id/stream_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone">
+
+        <SurfaceView
+            android:id="@+id/video"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+
+        <com.azhardhiaulhaq.macpad.HoverDotView
+            android:id="@+id/hover_dot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/reconnecting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="24dp"
+            android:accessibilityLiveRegion="polite"
+            android:background="#CC000000"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <ScrollView
+        android:id="@+id/connect_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
+        android:fillViewport="true">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.azhardhiaulhaq.macpad.MaxWidthLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center_horizontal"
+                android:maxWidth="480dp"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="32dp">
+
+                <ImageView
+                    android:layout_width="144dp"
+                    android:layout_height="144dp"
+                    android:contentDescription="@string/frog_description"
+                    android:src="@drawable/frog" />
+
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:accessibilityHeading="true"
+                    android:text="@string/app_name"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="34sp" />
+
+                <TextView
+                    android:id="@+id/status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:accessibilityLiveRegion="polite"
+                    android:gravity="center_horizontal"
+                    android:lineSpacingMultiplier="1.15"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="17sp" />
+
+                <LinearLayout
+                    android:id="@+id/pairing"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/pair_code"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFeatureSettings="tnum"
+                        android:textColor="@color/pair_code"
+                        android:textSize="48sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center_horizontal"
+                        android:text="@string/pair_instructions"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="17sp" />
+
+                    <Button
+                        android:id="@+id/pair_cancel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:minHeight="48dp"
+                        android:text="@string/pair_cancel" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/mac_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="32dp"
+                    android:orientation="vertical" />
+
+                <LinearLayout
+                    android:id="@+id/address_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="32dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:labelFor="@id/address_field"
+                        android:text="@string/address_label"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="17sp" />
+
+                    <EditText
+                        android:id="@+id/address_field"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/address_hint"
+                        android:imeOptions="actionGo|flagNoExtractUi"
+                        android:importantForAutofill="no"
+                        android:inputType="textUri"
+                        android:minHeight="48dp"
+                        android:singleLine="true"
+                        android:textColorHint="@color/hint"
+                        android:textSize="17sp" />
+
+                    <TextView
+                        android:id="@+id/address_help"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/address_help"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="14sp" />
+
+                    <Button
+                        android:id="@+id/address_connect"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="12dp"
+                        android:minHeight="48dp"
+                        android:text="@string/address_connect" />
+                </LinearLayout>
+            </com.azhardhiaulhaq.macpad.MaxWidthLinearLayout>
+        </FrameLayout>
+    </ScrollView>
+</FrameLayout>

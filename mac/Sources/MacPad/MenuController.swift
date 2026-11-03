@@ -137,16 +137,4 @@ final class MenuController: NSObject, NSMenuDelegate {
         _ = AXIsProcessTrustedWithOptions(options)
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
     }
-
-    /// Wi-Fi pairing prompt. Runs modally; the user compares the code with the tablet.
-    static func askApproval(deviceName: String, code: String, reply: @escaping (Bool) -> Void) {
-        let grouped = "\(code.prefix(3)) \(code.suffix(3))"
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Allow “\(deviceName)” to use this Mac as a second screen?"
-        alert.informativeText = "Only allow it if the tablet shows the code \(grouped)."
-        alert.addButton(withTitle: "Allow")
-        alert.addButton(withTitle: "Don’t Allow")
-        reply(alert.runModal() == .alertFirstButtonReturn)
-    }
 }

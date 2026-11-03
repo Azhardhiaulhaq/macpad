@@ -44,6 +44,17 @@ final class Session {
     private let queue: DispatchQueue
     private let log = Logger(subsystem: "com.azhardhiaulhaq.macpad", category: "session")
     private var phase: Phase
+    /// Silence allowed per phase before the link is treated as dead. The tablet pings every 2 s once
+    /// ready; before that it only waits on the handshake or, while pairing, on the person at the Mac.
+    private var idleTimeout: TimeInterval {
+        switch phase {
+        case .ready: 8
+        case .handshake, .awaitingHello: 15
+        case .awaitingApproval: 120
+        }
+    }
+    private var lastReceived = ProcessInfo.processInfo.systemUptime
+    private var watchdog: DispatchSourceTimer?
 
     // Guarded by `sendLock`: everything the encoder thread and the core queue share.
     private let sendLock = NSLock()
@@ -67,6 +78,17 @@ final class Session {
         }
         connection.start(queue: queue)
         readFrame()
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + 2, repeating: 2)
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            let limit = self.idleTimeout
+            guard ProcessInfo.processInfo.systemUptime - self.lastReceived > limit else { return }
+            self.log.notice("no traffic for \(Int(limit)) s; closing")
+            self.close()
+        }
+        timer.resume()
+        watchdog = timer
     }
 
     var isClosed: Bool { sendLock.withLock { closed } }
@@ -78,7 +100,10 @@ final class Session {
         }
         guard first else { return }
         connection.cancel()
-        queue.async { self.delegate?.sessionDidClose(self) }
+        queue.async {
+            self.watchdog?.cancel()
+            self.delegate?.sessionDidClose(self)
+        }
     }
 
     // MARK: Sending
@@ -147,6 +172,7 @@ final class Session {
     }
 
     private func handle(_ body: Data) {
+        lastReceived = ProcessInfo.processInfo.systemUptime
         var plain = body
         if let cipher = sendLock.withLock({ cipher }) {
             guard let opened = try? cipher.open(body) else {
@@ -179,7 +205,7 @@ final class Session {
                 delegate?.session(self, didReceive: type, payload: payload)
             }
         } catch {
-            log.error("malformed message \(first): \(String(describing: error))")
+            log.error("malformed message \(first): \(String(describing: error), privacy: .public)")
             close()
         }
     }

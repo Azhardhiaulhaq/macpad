@@ -27,8 +27,11 @@ final class Coordinator: SessionDelegate {
     let queue = DispatchQueue(label: "macpad.core", qos: .userInteractive)
     /// Called on the main thread whenever `status` changes.
     var onChange: (() -> Void)?
-    /// Asks the user to approve a Wi-Fi pairing. Called on the main thread.
-    var approve: ((_ deviceName: String, _ code: String, _ reply: @escaping (Bool) -> Void) -> Void)?
+    /// Asks the user to approve a Wi-Fi pairing. Called on the main thread; returns a closure
+    /// that withdraws the prompt if the tablet goes away first.
+    var approve: ((_ deviceName: String, _ code: String, _ reply: @escaping (Bool) -> Void) -> () -> Void)?
+    /// Open pairing prompts by session. Main thread only.
+    private var pendingApprovals: [ObjectIdentifier: () -> Void] = [:]
 
     private let log = Logger(subsystem: "com.azhardhiaulhaq.macpad", category: "core")
     private var server: Server?
@@ -47,6 +50,8 @@ final class Coordinator: SessionDelegate {
     private var askedAccessibility = false
     /// Identifies the current stream so a late failure from a replaced one is ignored.
     private var streamGeneration = 0
+    private static let maxCaptureRetries = 2
+    private var captureRetries = 0
 
     private let statusLock = NSLock()
     private var _status = Status()
@@ -83,21 +88,34 @@ final class Coordinator: SessionDelegate {
     }
 
     func sessionNeedsApproval(_ session: Session, deviceName: String, code: String, reply: @escaping (Bool) -> Void) {
+        let id = ObjectIdentifier(session)
         DispatchQueue.main.async { [weak self] in
-            guard let approve = self?.approve else { return reply(false) }
-            approve(deviceName, code, reply)
+            guard let self, let approve = self.approve else { return reply(false) }
+            self.pendingApprovals[id] = approve(deviceName, code) { [weak self] allowed in
+                self?.pendingApprovals.removeValue(forKey: id)
+                reply(allowed)
+            }
         }
     }
 
     func sessionDidReceiveHello(_ session: Session, hello: Hello) {
-        if let current = active, current !== session {
-            session.sendNoticeAndClose(code: 2, message: "\(current.hello?.deviceName ?? "Another tablet") is already using this Mac as a screen.")
-            return
-        }
         guard CGPreflightScreenCaptureAccess() else {
             DispatchQueue.main.async { _ = CGRequestScreenCaptureAccess() }
             session.sendNoticeAndClose(code: 1, message: "Allow Screen Recording for MacPad on your Mac (System Settings, Privacy & Security), then quit and reopen MacPad on the Mac.")
             return
+        }
+        if let current = active, current !== session {
+            guard current.hello?.clientId == hello.clientId else {
+                session.sendNoticeAndClose(code: 2, message: "\(current.hello?.deviceName ?? "Another tablet") is already using this Mac as a screen.")
+                return
+            }
+            // The same tablet is back (switched between USB and Wi-Fi, or the old link died
+            // without closing): the new connection replaces the old one and keeps the display.
+            active = nil
+            injector.reset()
+            streamer?.stop()
+            streamer = nil
+            current.close()
         }
         active = session
         grace?.cancel()
@@ -164,7 +182,14 @@ final class Coordinator: SessionDelegate {
     }
 
     func sessionDidClose(_ session: Session) {
-        sessions.removeValue(forKey: ObjectIdentifier(session))
+        let id = ObjectIdentifier(session)
+        sessions.removeValue(forKey: id)
+        log.info("session closed (\(session.transport.rawValue))")
+        DispatchQueue.main.async { [weak self] in
+            guard let withdraw = self?.pendingApprovals.removeValue(forKey: id) else { return }
+            self?.log.info("withdrawing pairing prompt")
+            withdraw()
+        }
         guard session === active else { return }
         active = nil
         injector.reset()
@@ -231,19 +256,30 @@ final class Coordinator: SessionDelegate {
         streamGeneration += 1
         let generation = streamGeneration
         let output = Streamer.Output(
-            config: { [weak session] width, height, sets in
+            config: { [weak self, weak session] width, height, sets in
                 var w = ByteWriter(capacity: 4 + sets.count)
                 w.u16(UInt16(width))
                 w.u16(UInt16(height))
                 w.bytes(sets)
                 session?.send(.videoConfig, w.data)
+                // The stream produced video, so earlier failures were transient.
+                self?.queue.async { if self?.streamGeneration == generation { self?.captureRetries = 0 } }
             },
             frame: { [weak session] payload in session?.sendVideo(.videoFrame, payload) },
             canSend: { [weak session] in session?.canSendVideo ?? false },
             failed: { [weak self, weak session] message in
                 self?.queue.async {
-                    guard let self, self.streamGeneration == generation else { return }
-                    session?.sendNoticeAndClose(code: 3, message: "Screen capture failed on the Mac: \(message)")
+                    guard let self, self.streamGeneration == generation, let session, session === self.active else { return }
+                    // ScreenCaptureKit can stop right after displays are added or removed; try again briefly.
+                    if self.captureRetries < Self.maxCaptureRetries {
+                        self.captureRetries += 1
+                        self.queue.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                            guard let self, self.streamGeneration == generation, session === self.active else { return }
+                            self.startStreaming()
+                        }
+                        return
+                    }
+                    session.sendNoticeAndClose(code: 3, message: "Screen capture failed on the Mac: \(message)")
                 }
             })
         let streamer = Streamer(displayID: displayID, width: panel.width, height: panel.height, bitRate: bitRate, output: output)

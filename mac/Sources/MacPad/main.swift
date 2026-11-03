@@ -8,7 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = MenuController(coordinator: coordinator)
         self.menu = menu
         coordinator.onChange = { [weak menu] in menu?.refresh() }
-        coordinator.approve = MenuController.askApproval
+        coordinator.approve = PairingPrompt.show
         coordinator.start()
         LoginItem.enableOnFirstLaunch()
         if !CGPreflightScreenCaptureAccess() {

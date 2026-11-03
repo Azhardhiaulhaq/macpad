@@ -11,7 +11,7 @@ One TCP connection carries everything: video from the Mac to the tablet, input a
 
 Bonjour TXT record: `id=<32 lowercase hex chars, server id>`, `v=1`. The service instance name is the Mac's computer name.
 
-Some routers drop multicast between wireless clients, so Bonjour never reaches the tablet. The tablet therefore also remembers the addresses from `SERVER_INFO` (learned over any connection, including USB) and tries them directly on port 47801, and lets the user type an address. For an address whose server id the tablet does not know yet, it sends `hasKey=0`.
+Some routers drop multicast between wireless clients, so Bonjour never reaches the tablet. The tablet therefore also remembers the addresses from `SERVER_INFO` (learned over any connection, including USB) and tries them directly on port 47801, and lets the user type an address. For an address whose server id the tablet does not know yet, it sends `hasKey=0`; if the reply's `serverId` turns out to be one it holds a key for, it closes and reconnects with that server id and `hasKey=1` instead of pairing.
 
 The Mac serves one tablet at a time. A second connection receives `NOTICE` code 2 and is closed.
 
@@ -42,7 +42,7 @@ Keys are NIST P-256. Public keys travel as 65-byte uncompressed X9.63 points (`0
 1. Tablet sends `0x10 WIFI_HELLO`: `u16 version=1`, `16B clientId`, `65B clientPub` (fresh per connection), `u8 hasKey` (1 if the tablet stores a pairing key for the server id from the TXT record), `string deviceName`.
 2. Mac replies `0x90 WIFI_HELLO_REPLY`: `16B serverId`, `65B serverPub` (fresh per connection), `u8 mode`.
    - `mode=0` (paired): the Mac stores a pairing key for `clientId` and `hasKey=1`.
-   - `mode=1` (pairing required): any other case. The tablet deletes any stored key for this server.
+   - `mode=1` (pairing required): any other case. Neither side changes its stored keys until `PAIR_ACCEPTED`, so a cancelled or rejected pairing leaves an existing pairing intact.
 3. If `mode=1`:
    - Both compute `sas = u32(HKDF(ikm=shared, salt="macpad-sas-v1", info=transcript, L=4)) mod 1000000`, shown as 6 zero-padded digits.
    - The Mac asks the user to allow the tablet while showing the code. The tablet shows the same code.

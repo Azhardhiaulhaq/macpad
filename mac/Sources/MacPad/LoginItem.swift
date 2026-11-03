@@ -15,7 +15,7 @@ enum LoginItem {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            log.error("login item change failed: \(String(describing: error))")
+            log.error("login item change failed: \(String(describing: error), privacy: .public)")
         }
     }
 

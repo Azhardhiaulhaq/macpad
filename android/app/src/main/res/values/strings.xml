@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MacPad</string>
+    <string name="frog_description">MacPad frog</string>
+
+    <string name="status_searching">No Mac found yet. Plug in the USB cable, or open MacPad on your Mac and join the same Wi-Fi.</string>
+    <string name="status_pick">Tap your Mac to connect. With the USB cable plugged in, MacPad connects on its own.</string>
+    <string name="status_connecting">Connecting to %1$s...</string>
+    <string name="status_pairing">Pairing with %1$s.</string>
+    <string name="status_rejected">Your Mac declined this tablet. Tap the Mac to ask again.</string>
+    <string name="status_unreachable">Could not reach %1$s. Check that both devices are on the same Wi-Fi.</string>
+    <string name="status_unreachable_address">Could not reach %1$s. Check the address in the MacPad menu on your Mac, and that both devices are on the same Wi-Fi.</string>
+    <string name="status_usb_failed">Could not connect over USB. Check the cable, then start MacPad on your Mac again.</string>
+    <string name="status_keys_reset">%1$s no longer recognizes this tablet. Tap the Mac to pair again.</string>
+    <string name="status_lost">Lost the connection to %1$s. Tap the Mac to connect again, or plug in the USB cable.</string>
+    <string name="status_left">Disconnected from %1$s. Tap a Mac below to connect again.</string>
+    <string name="status_protocol">%1$s sent data this version of MacPad does not understand. Update MacPad on both devices, then try again.</string>
+    <string name="notice_permission">Your Mac needs Screen Recording permission for MacPad. Allow it in System Settings, Privacy and Security, then connect again.</string>
+    <string name="notice_busy">Another tablet is using MacPad on this Mac. Disconnect it, then connect again.</string>
+    <string name="notice_display">Your Mac could not create the extra display. Quit and reopen MacPad on the Mac, then connect again.</string>
+
+    <string name="your_mac">your Mac</string>
+    <string name="mac_paired">Wi-Fi, paired</string>
+    <string name="mac_unpaired">Wi-Fi, tap to pair</string>
+    <string name="usb_row_title">Mac on the USB cable</string>
+    <string name="usb_row_subtitle">USB, tap to connect</string>
+
+    <string name="address_label">Connect by address</string>
+    <string name="address_hint">192.168.1.2</string>
+    <string name="address_help">Find it in the MacPad menu on your Mac.</string>
+    <string name="address_connect">Connect</string>
+
+    <string name="pair_instructions">Check that your Mac shows the same code, then click Allow on the Mac.</string>
+    <string name="pair_code_description">Pairing code %1$s</string>
+    <string name="pair_cancel">Cancel pairing</string>
+
+    <string name="reconnecting">Reconnecting to %1$s...</string>
+</resources>
