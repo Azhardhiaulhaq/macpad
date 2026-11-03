@@ -62,7 +62,7 @@ final class Coordinator: SessionDelegate {
             server = Server(
                 queue: queue,
                 onConnection: { [weak self] connection, transport in self?.accept(connection, transport) },
-                onError: { [weak self] message in self?.updateStatus { $0.serverProblem = message } })
+                onProblem: { [weak self] message in self?.updateStatus { $0.serverProblem = message } })
             server?.start()
         }
         usb.onProblem = { [weak self] message in self?.updateStatus { $0.usbProblem = message } }
